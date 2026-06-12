@@ -13,16 +13,38 @@ app.use(cors())
 app.use(bodyParser.json());
 
 var con = mysql.createConnection({
-  host: "database-1.czuepjtqzk8i.us-east-1.rds.amazonaws.com", 
-  user:"admin", 
-  password:"dbmsvoip",
-  database: "dbms"
+  host: "localhost",
+ user: "root",
+ password: "ArsenalMessi@2005",
+ database: "transport"
 });
  
 // make to connection to the database.
 con.connect(function(err) {
   if (err) console.log(err)
   // if connection is successful
+  
+  // Create Through table if it doesn't exist
+  con.query(`
+    CREATE TABLE IF NOT EXISTS Through (
+      RouteID INT NOT NULL CHECK (RouteID > 0),
+      DriverID INT NOT NULL CHECK (DriverID > 0),
+      StartTime DECIMAL(4,2) CHECK (StartTime >= 0 AND StartTime < 2400),
+      BusRegnNo VARCHAR(15) NOT NULL,
+      TicketPNR INT NOT NULL CHECK (TicketPNR > 0),
+      PRIMARY KEY (RouteID, DriverID, StartTime, TicketPNR),
+      FOREIGN KEY (BusRegnNo) REFERENCES BusInfo(BusRegnNo),
+      FOREIGN KEY (TicketPNR) REFERENCES Ticket(TicketPNR)
+    )
+  `, function(err, result) {
+    if (err) {
+      console.log('Error creating Through table:');
+      console.log(err);
+    } else {
+      console.log('Through table ready');
+    }
+  });
+  
   con.query("select * from UserTable where Name='trimath'", function (err, result, fields) {
     // if any error while executing above query, throw error
     if (err) 
@@ -62,23 +84,24 @@ app.get('/COST',(req,res)=>{
 })
 
 app.get('/BusStops',(req,res)=>{
-  
-  con.query("select distinct IntermediateStops from BusStops", function (err, result, fields) {
-    
-    if (err) 
-      {
-        console.log('error');
-        console.log(err)
+  const q = `
+    SELECT DISTINCT IntermediateStops AS stop FROM BusStops
+    UNION
+    SELECT DISTINCT Source AS stop FROM RouteDetails
+    UNION
+    SELECT DISTINCT Destination AS stop FROM RouteDetails
+  `;
 
-      }
-      
-    var resx=[];
-      Object.keys(result).forEach(function(key) {
-      resx.push((result[key]).IntermediateStops);
-    });
-      res.json(JSON.stringify(resx));
+  con.query(q, function (err, result, fields) {
+    if (err) {
+      console.log('error');
+      console.log(err);
+      return res.json(JSON.stringify([]));
+    }
+
+    const resx = result.map(row => row.stop);
+    res.json(JSON.stringify(resx));
   });
-
 
 });	
 
@@ -104,31 +127,29 @@ app.get('/RouteId',(req,res)=>{
 
 });	
 
-app.get('/Buses',(req,res)=>{
-  
-  var from=req.query.from;
-  var to=req.query.to;
-  
-  con.query("select distinct RouteId from RouteDetails", function (err, result, fields) {
-    
-    if (err) 
-      {
-        console.log('error');
-        console.log(err)
+// ✅ Fixed
+app.get('/Buses', (req, res) => {
+  var from = req.query.from;
+  var to = req.query.to;
 
-      }
-      
-    var resx=[];
-      Object.keys(result).forEach(function(key) {
-      resx.push((result[key].RouteId.toString()));
-    });
-      console.log(resx);
-      res.json(JSON.stringify(resx));
-  });
+  var q = `SELECT distinct RouteId FROM BusStops 
+           WHERE RouteId IN (
+             SELECT RouteId FROM BusStops WHERE IntermediateStops='${from}'
+             AND RouteId IN (
+               SELECT RouteId FROM BusStops WHERE IntermediateStops='${to}'
+             )
+           )`;
 
+  con.query(q, function (err, result, fields) {
+    if (err) { console.log(err); return res.json({ error: err }); }
 
-});	
-
+    if (result.length >= 1) {
+      var resx = result.map(r => r.RouteId);
+      res.json(JSON.stringify({ error: '', response: resx }));
+    } else {
+      res.json(JSON.stringify({ error: 'No route found', response: 'fail' }));
+    }})
+});
 
 app.get('/Agencies',(req,res)=>{
   
@@ -212,94 +233,103 @@ console.log(`select BookedSeats from Ticket natural join SeatsBooked where Trave
 
 app.post('/Tickets',(req,res)=>{
 
-var rid=req.body.routeid;
-var regn=req.body.busregnno
+var regn=req.body.busregnno;
 
-var bdate=new Date();
-var dd=bdate.getUTCDate()+1;
-var mm=bdate.getUTCMonth()+1;
-var yyyy=bdate.getUTCFullYear();
-var xyz= yyyy+"-"+mm+"-"+dd;
+// Set booking date to today
+var bdate = new Date();
+var dd_b = bdate.getUTCDate();
+var mm_b = bdate.getUTCMonth() + 1;  // Months are 0-indexed
+var yyyy_b = bdate.getUTCFullYear();
+var bookingDate = yyyy_b + "-" + String(mm_b).padStart(2, '0') + "-" + String(dd_b).padStart(2, '0');
 
-var tdate=new Date(req.body.traveldate);
-var dd=tdate.getUTCDate()+1;
-var mm=tdate.getUTCMonth()+1;
-var yyyy=tdate.getUTCFullYear();
-var xyz2= yyyy+"-"+mm+"-"+dd;
+// Parse the travel date provided by user
+var tdate = new Date(req.body.traveldate);
+var dd_t = tdate.getUTCDate();
+var mm_t = tdate.getUTCMonth() + 1;
+var yyyy_t = tdate.getUTCFullYear();
+var travelDate = yyyy_t + "-" + String(mm_t).padStart(2, '0') + "-" + String(dd_t).padStart(2, '0');
 
- 
- console.log(`insert into Ticket (BusRegnNo,BookingDate,TravelDate) values ('${regn}','${xyz}','${xyz2}')`)
-          con.query(`insert into Ticket (BusRegnNo,BookingDate,TravelDate) values ('${regn}','${xyz}','${xyz2}')`, function (err, result, fields) {
+console.log(`insert into Ticket (BusRegnNo,BookingDate,TravelDate) values ('${regn}','${bookingDate}','${travelDate}')`);
 
-              if (err) 
-              {
-                console.log('error in Ticket');
-                console.log(err)
+con.query(`insert into Ticket (BusRegnNo,BookingDate,TravelDate) values ('${regn}','${bookingDate}','${travelDate}')`, function (err, result, fields) {
 
-              } 
-              else
-              {
-                 con.query(`select max(TicketPNR) as TicketPNR from Ticket`, function (err, res2, fields) {
-
-                      if (err) 
-                      {
-                        console.log('error');
-                        console.log(err)
-
-                      }
-
-                      var resx=[];
-                      Object.keys(res2).forEach(function(key) {
-                      resx.push((res2[key].TicketPNR.toString()));
-                      });
-                      console.log(resx);
-                      var abc={
-                        pnr:resx,
-                        error:err
-                      }
-                      res.json(JSON.stringify(abc));
-                      }); 
-                 console.log(result)  
-              }
-             
-})
+  if (err) {
+    console.log('error in Ticket');
+    console.log(err);
+    var abc = {
+      pnr: null,
+      error: err.message || 'Failed to create ticket. Please ensure TravelDate is at least 3 days from today.'
+    };
+    res.json(JSON.stringify(abc));
+  } 
+  else {
+    con.query(`select max(TicketPNR) as TicketPNR from Ticket`, function (err, res2, fields) {
+      if (err) {
+        console.log('error getting PNR');
+        console.log(err);
+        var abc = {
+          pnr: null,
+          error: err.message || 'Error retrieving ticket number'
+        };
+        res.json(JSON.stringify(abc));
+      } else {
+        var resx = [];
+        Object.keys(res2).forEach(function(key) {
+          resx.push((res2[key].TicketPNR.toString()));
+        });
+        console.log('Generated PNR:', resx);
+        var abc = {
+          pnr: resx,
+          error: null
+        };
+        res.json(JSON.stringify(abc));
+      }
+    }); 
+  }
+});
 });
 
 app.post('/Through',(req,res)=>{
 
 var rid=req.body.routeid;
 var did=req.body.driverid;
-var regn=req.body.busregnno
+var regn=req.body.busregnno;
 var pnr=req.body.pnr;
-var st=req.body.starttime
+var st=req.body.starttime;
 
-    console.log(st)
-
-        console.log(`insert into Through values(${rid},${did},${st},'${regn}',${pnr})`)
-         
-       con.query(`insert into Through values(${rid},${did},${st},'${regn}',${pnr})`, function (err, result, fields) {
-
-              if (err) 
-              {
-                console.log('error in Through');
-                console.log(err)
-              }
-              else
-              {
-                  console.log("Insert done")
-              }
-
-           var abc={
-                res:result,
-                error:err
-              }
-              res.json(JSON.stringify(abc));
-          });
-      
-   
-
+if (!rid || !did || !st || !regn || !pnr) {
+    console.log('Missing required fields');
+    var abc={
+        res:null,
+        error:'Missing required fields: routeid, driverid, starttime, busregnno, pnr'
+    };
+    res.json(JSON.stringify(abc));
+    return;
 }
-)
+
+console.log(`insert into Through values(${rid},${did},${st},'${regn}',${pnr})`);
+
+con.query(`insert into Through (RouteID, DriverID, StartTime, BusRegnNo, TicketPNR) values(${rid},${did},${st},'${regn}',${pnr})`, function (err, result, fields) {
+
+    if (err) {
+        console.log('error in Through');
+        console.log(err);
+        var abc={
+            res:null,
+            error:err.message || 'Error inserting into Through table'
+        };
+        res.json(JSON.stringify(abc));
+    }
+    else {
+        console.log("Insert done");
+        var abc={
+            res:result,
+            error:null
+        };
+        res.json(JSON.stringify(abc));
+    }
+});
+});
 
 
 
@@ -428,7 +458,7 @@ if(err) console.log(err)
 
 			console.log(q);
 
-			con.query(q, [Id,email,user,pass,address, phone, gender], function (err, result, fields) {
+			con.query(q, [Id,email,user,pass, UserType], function (err, result, fields) {
 			if (err) console.log(err)
 			
 			else
@@ -497,40 +527,53 @@ console.log(q)
 });
 
 app.post('/CheckRoute', async (req, res) => {
-   
+  const fromP = req.body.fromSelect ? req.body.fromSelect.trim() : '';
+  const toP = req.body.toSelect ? req.body.toSelect.trim() : '';
 
-  var fromP = req.body.fromSelect;
-  var toP = req.body.toSelect;
+  if (!fromP || !toP) {
+    return res.json(JSON.stringify({ error: 'No Such Route Exists', response: 'fail' }));
+  }
 
-var q="SELECT distinct RouteId FROM BusStops WHERE RouteId IN (SELECT RouteId FROM BusStops Where IntermediateStops='"+fromP+"' and RouteId in (SELECT RouteId FROM BusStops Where IntermediateStops='"+toP+"'))";
-console.log(q)
+  const q = `
+    SELECT DISTINCT RouteId FROM BusStops
+    WHERE RouteId IN (
+      SELECT RouteId FROM BusStops WHERE LOWER(IntermediateStops)=LOWER(?)
+      AND RouteId IN (
+        SELECT RouteId FROM BusStops WHERE LOWER(IntermediateStops)=LOWER(?)
+      )
+    )
+  `;
 
-   con.query(q, function (err, result, fields) {
-   if (err) console.log(err);
-     if(result.length >= 1)
-     {
-      var resx=[];
-      Object.keys(result).forEach(function(key) {
-        resx.push((result[key]).RouteId);
-      });
+  con.query(q, [fromP, toP], function (err, result, fields) {
+    if (err) {
+      console.log(err);
+      return res.json(JSON.stringify({ error: 'Database error', response: 'fail' }));
+    }
 
-       var abc={
-         error:'',
-         response:resx
-       }
-     }
-     else
-     {
-       var abc={
-         error:'No Such Route Exists',
-         response:'fail'
-       }
+    if (result.length >= 1) {
+      const resx = result.map(row => row.RouteId);
+      return res.json(JSON.stringify({ error: '', response: resx }));
+    }
 
-     }
-     res.json(JSON.stringify(abc));
+    const fallbackQ = `
+      SELECT RouteID FROM RouteDetails
+      WHERE LOWER(Source)=LOWER(?) AND LOWER(Destination)=LOWER(?)
+    `;
 
- });
-   
+    con.query(fallbackQ, [fromP, toP], function (fallbackErr, fallbackResult) {
+      if (fallbackErr) {
+        console.log(fallbackErr);
+        return res.json(JSON.stringify({ error: 'Database error', response: 'fail' }));
+      }
+
+      if (fallbackResult.length >= 1) {
+        const resx = fallbackResult.map(row => row.RouteID);
+        return res.json(JSON.stringify({ error: '', response: resx }));
+      }
+
+      return res.json(JSON.stringify({ error: 'No Such Route Exists', response: 'fail' }));
+    });
+  });
 });
 
 
@@ -634,6 +677,14 @@ console.log(drivername+" "+driverphone+" "+age+" "+date_of_join)
 
     });
     
+app.post('/', (req, res) => {
+  const text = req.body.text;
+  console.log("User said:", text);
 
+  // 🔥 TEMP response (you can upgrade later)
+  res.json({
+    response: "I heard: " + text
+  });
+});
 
 app.listen(port, () => console.log(`Listening on port ${port}`));

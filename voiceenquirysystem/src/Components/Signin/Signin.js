@@ -74,20 +74,20 @@ class Signin extends Component
 	          <ScrollPanel style={{width: '100%', height: '500px'}}>
 	          <form onSubmit={this.handleSubmit}>
 	            
-                				<h7 > Welcome back again </h7>        
-								<div className="p-inputgroup">
-									<span className="p-inputgroup-addon" style={{width:"120px"}}>
-										<i className="pi pi-user">Email</i>
-									</span>
-										<input autocomplete="off" name="email" type="text" style={{width:"200px"}} onChange={this.handleChange}/>
-								</div>
+<h2>Welcome back again</h2>        
+				<div className="p-inputgroup">
+					<span className="p-inputgroup-addon" style={{width:"120px"}}>
+						<i className="pi pi-user">Email</i>
+					</span>
+						<input autoComplete="off" name="email" type="text" style={{width:"200px"}} onChange={this.handleChange}/>
+				</div>
 
-								<div className="p-inputgroup">
-									<span className="p-inputgroup-addon" style={{width:"120px"}}>
-										<i className="pi pi-user">Password</i>
-									</span>
-										
-										<input autocomplete="off" name="pass" type="password" style={{width:"200px"}} onChange={this.handlePassChange}/>
+				<div className="p-inputgroup">
+					<span className="p-inputgroup-addon" style={{width:"120px"}}>
+						<i className="pi pi-user">Password</i>
+					</span>
+						
+						<input autoComplete="off" name="pass" type="password" style={{width:"200px"}} onChange={this.handlePassChange}/>
 								</div>
 
 					            

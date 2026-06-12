@@ -69,7 +69,7 @@ driverid:this.props.bus.DriverID
 .then(res=> res.json())
 .then(data=>{this.setState({response:JSON.parse(data)},function(){console.log(this.state);console.log("NOOO")})})
 .then(x=>{
-		if(this.state.response.error===null)
+		if(!this.state.response.error)
 		{ 
 		this.props.setPNR(this.state.response.pnr);
 		this.props.setbooked(this.state.seatsbooked);
@@ -89,7 +89,7 @@ driverid:this.props.bus.DriverID
 		.then(res=> res.json())
 		.then(data=>{this.setState({response2:JSON.parse(data)})})
 		.then(x=>{
-		if(this.state.response2.error===null)
+		if(!this.state.response2.error)
 		{ 
 		console.log("Entered into SeatsBooked")
 		fetch('http://localhost:3001/Through',{
@@ -108,26 +108,22 @@ driverid:this.props.bus.DriverID
 		.then(res=> res.json())
 		.then(data=>{this.setState({response3:JSON.parse(data)})})
 		.then(x=>{
-		if(this.state.response3.error===null)
+		if(!this.state.response3.error)
 		{ 
 		console.log("Entered into Through")
 		alert("Succesfully Booked!!!")
 		this.props.onRouteChange('testing');
-
-
 		}
 		else
-		alert("Error inserting. Please follow all restrictions:"+JSON.stringify(this.state.response.error));
+		alert("Error inserting. Please follow all restrictions:"+JSON.stringify(this.state.response3.error));
 		})
-
 		}
 		else
-		alert("Error inserting. Please follow all restrictions:"+JSON.stringify(this.state.response.error));
+		alert("Error inserting seats. Please follow all restrictions:"+JSON.stringify(this.state.response2.error));
 		})
-
 		}
-							else
-								alert("Error inserting. Please follow all restrictions:"+JSON.stringify(this.state.response.error));
+		else
+		alert("Error creating ticket. "+this.state.response.error);
 								})
 
 			}

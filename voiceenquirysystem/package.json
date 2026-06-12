@@ -18,14 +18,14 @@
     "react-numeric-input": "^2.2.3",
     "react-particles-js": "^2.7.0",
     "react-radio-buttons": "^1.2.2",
-    "react-scripts": "3.0.1",
+    "react-scripts": "^3.0.1",
     "react-select": "^3.0.4",
     "react-tilt": "^0.1.4",
     "react-to-print": "^2.4.0",
     "tachyons": "^4.11.1"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "set NODE_OPTIONS=--openssl-legacy-provider && react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

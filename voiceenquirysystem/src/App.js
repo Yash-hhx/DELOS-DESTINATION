@@ -20,7 +20,9 @@ const initial_state={
       busy:false,
       isSignedin:false,
       isAdmin:false,
-      route:'home'} 
+      route:'home',
+      routeid:[]
+   } 
    
 
 class App extends Component {
@@ -31,9 +33,9 @@ class App extends Component {
       busy:false,
       isSignedin:false,
       isAdmin:false,
-      route:'t',
+      route:'signin',
       error:'',
-      routeid:[3,4],
+      routeid:[],
       selbus:[]
     }
   }
@@ -89,18 +91,18 @@ if(route=== 'signout')
 }
 else if(route === 'home')
 {
-  this.setState({isSignedIn:true});
+  this.setState({isSignedin:true});
 
 }
 
 else if(route === 'signin')
 {
-  this.setState({isSignedIn:false});
+  this.setState({isSignedin:false});
 }
 
 else if(route === 'register')
 {
-  this.setState({isSignedIn:false});
+  this.setState({isSignedin:false});
 }
 
   this.setState({route:route});
@@ -113,12 +115,14 @@ else if(route === 'register')
   }
 
   SetRouteId = (resx) => {
+    this.setState(prevState => ({ routeid: [...prevState.routeid, resx] }), () => {
+      console.log("Inside Set RouteID", this.state.routeid);
+    });
+  }
 
-    this.state.routeid.push(resx);
-    
-    console.log("Inside Set RouteID")
-    this.setState({done:"True"},function() {
-      console.log("EVERYthing")  
+  SetRouteIds = (routeIds) => {
+    this.setState({ routeid: Array.isArray(routeIds) ? routeIds : [] }, () => {
+      console.log("Inside Set RouteIDs", this.state.routeid);
     });
   }
 
@@ -224,7 +228,7 @@ else if(route === 'register')
                                   <div>
                                     <Navigation route={this.state.route} onRouteChange={this.onRouteChange} isSignedin={this.state.isSignedin}/>
                                     <Logo/>
-                                    <Welcome setPlaces={this.setPlaces} SetTravelDate={this.SetTravelDate} onRouteChange={this.onRouteChange} Reset={this.Reset} SetRouteId={this.SetRouteId} RouteChanger={this.RouteChanger} sbus={true} /> 
+                                    <Welcome setPlaces={this.setPlaces} SetTravelDate={this.SetTravelDate} onRouteChange={this.onRouteChange} Reset={this.Reset} SetRouteId={this.SetRouteId} SetRouteIds={this.SetRouteIds} RouteChanger={this.RouteChanger} sbus={true} /> 
                                   </div>
                                )
                                ://else
@@ -251,7 +255,16 @@ else if(route === 'register')
                                                   
                                                           {
                                                             
-                                                            <Card SetBus={this.SetBus} onRouteChange={this.onRouteChange} routeids={this.state.routeid} from={this.state.from} to={this.state.to} sbus={true} onRouteChange={this.onRouteChange} id={bus[0].id} name={bus[0].name} />
+                                                            <Card 
+  SetBus={this.SetBus} 
+  onRouteChange={this.onRouteChange} 
+  routeids={this.state.routeid} 
+  from={this.state.from} 
+  to={this.state.to} 
+  sbus={true} 
+  id={bus[0].id} 
+  name={bus[0].name} 
+/>
                                                           }
                                                       </div>
                                                   ): (this.state.route==='test')?
@@ -259,7 +272,15 @@ else if(route === 'register')
                                              (
                                                 <div>
                                                     <Navigation route={this.state.route} onRouteChange={this.onRouteChange} isSignedin={this.state.isSignedin}/>
-                                                    <Seat onRouteChange={this.onRouteChange} bus={this.state.selbus}  seldate={this.state.traveldate} routeid={this.state.selbus.routeid} SetBus={this.SetBus} setPNR={this.setPNR} setbooked={this.setbooked} onRouteChange={this.onRouteChange}/>                  
+                                                   <Seat 
+  onRouteChange={this.onRouteChange} 
+  bus={this.state.selbus}  
+  seldate={this.state.traveldate} 
+  routeid={this.state.selbus.routeid} 
+  SetBus={this.SetBus} 
+  setPNR={this.setPNR} 
+  setbooked={this.setbooked} 
+/>                  
                                                 </div>
                                                 
                                               ): (this.state.route==='testing')?

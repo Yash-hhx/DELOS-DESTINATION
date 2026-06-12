@@ -21,6 +21,38 @@ class Message extends Component
     });
   }
 
+  startListening = () => {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+
+  recognition.start();
+
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    console.log("User said:", text);
+
+    // 🔥 Send to backend
+    fetch("http://localhost:3001/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ text: text })
+    })
+      .then(res => res.json())
+      .then(data => {
+        console.log("Backend:", data);
+
+        // 🔊 Speak backend response
+        this.speak(data.response);
+      })
+      .catch(err => console.log(err));
+  };
+};
+
     speak = (xyz) => {
       // Check if speaking
       console.log(this.state);
@@ -48,6 +80,41 @@ class Message extends Component
         synth.speak(speakText);
       
     };
+
+    handleVoice = (text) => {
+  fetch('http://localhost:3001/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text: text
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log("Backend:", data);
+
+    // 🔊 Speak response
+    this.speak(data.response);
+  })
+  .catch(err => console.log(err));
+};
+
+startListening = () => {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+
+  recognition.start();
+
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    console.log("User said:", text);
+
+    this.handleVoice(text); // 👈 CONNECTED HERE
+  };
+};
 
     handleClick1 = () =>
     {
@@ -85,6 +152,12 @@ class Message extends Component
 			return (
 
 			<div className='broc'>
+
+        <button onClick={this.startListening} style={{margin: '10px'}}>
+  🎤 Speak
+</button>
+
+
 			
 			<img onClick={this.handleClick} alt='bus' src={'https://robohash.org/'+'1'+'?200x200'} style={{background:'#ffffff',width:'80px',height:'auto'}}/>
 			<p className="headeds" style={{borderRadius:'55px 50px'}}>Hey I'm Leader Bot of this Westworld. Me and my team of bots will be assisting you for booking.<br/>If at any point, you are struck with what to do. Click on one of us to enable voice reply. We'll help you<br/>Word of advice: Those Violent Delights have violent ends</p>

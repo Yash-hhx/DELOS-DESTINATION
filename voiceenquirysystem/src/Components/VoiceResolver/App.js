@@ -12,7 +12,8 @@ export default class App extends React.Component {
         this.startAssistant = this.startAssistant.bind(this);
         this.stopAssistant = this.stopAssistant.bind(this);
         this.handleTextChange = this.handleTextChange.bind(this);
-        
+        this.handleVoiceInput = this.handleVoiceInput.bind(this);
+
         this.state = {
             artyomActive: false,
             textValue: ''
@@ -49,12 +50,19 @@ export default class App extends React.Component {
         Jarvis.redirectRecognizedTextOutput((recognizedText, isFinal) => {
             if(isFinal){
                 document.getElementById(this.props.id).value = recognizedText;
-                this.setState({textValue:recognizedText})
+                this.setState({textValue:recognizedText});
+                this.handleVoiceInput(recognizedText);
             }else{
                 document.getElementById(this.props.id).value = recognizedText;
-                
             }
         });
+
+    }
+
+    handleVoiceInput(text) {
+        if (this.props.onVoiceInput) {
+            this.props.onVoiceInput(text);
+        }
     }
 
     stopAssistant() {

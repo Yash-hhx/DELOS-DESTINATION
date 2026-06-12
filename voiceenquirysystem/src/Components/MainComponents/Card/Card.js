@@ -17,21 +17,21 @@ class Card extends Component
     componentDidMount() {
     	if(this.props.sbus===true)
     	{
-    				var buses=[]
-    				var r=this.props.routeids;
+    			var buses=[]
+    			var r=this.props.routeids;
+    			if (Array.isArray(r) && r.length > 0) {
     				for(var i=0;i<r.length;i++)
-	    				{
+    	    			{
+    		        	fetch(`http://localhost:3001/fetchBuses/${r[i]}`)
+    		        .then(res=> res.json())
+    		        .then(data=>{(JSON.parse(data)).forEach(function(items){buses.push(items)})})
+    		        .then(xyz=>this.setState({Buses:buses}))
+    		        .catch((err)=>{console.log(err)})
 
-					        fetch(`http://localhost:3001/fetchBuses/${r[i]}`)
-					        .then(res=> res.json())
-					        .then(data=>{(JSON.parse(data)).forEach(function(items){buses.push(items)})})
-					        .then(xyz=>this.setState({Buses:buses}))
-					        .catch((err)=>{console.log(err)})
-
-	    				}
-	    			console.log("GOT ");
-    				console.log(this.state);
-    				
+    				}
+    			} else {
+    				console.warn('Card mounted with sbus=true but no routeids provided');
+    			}
     	}
 	}
 
@@ -116,13 +116,16 @@ class Card extends Component
 
 		if(this.props.sbus===true)
 		{
-		return (
-					<div>
-						
-					{this.LoadBuses()}
-					</div>
+			const hasRouteIds = Array.isArray(this.props.routeids) && this.props.routeids.length > 0;
+			return (
+				<div>
+					{this.state.Buses.length > 0 ? this.LoadBuses() : (
+						 hasRouteIds ? <div className="tc pa3">No buses available for the selected route.</div> : <div className="tc pa3">Please search for a route to display buses.</div>
+					)}
+				</div>
 			);
 		}
+
 		else
 		{
 			return (

@@ -1,74 +1,88 @@
-import React,{Component} from 'react';
+import React, { Component } from 'react';
 import './Text2Speech.css';
 
-class Text2Speech extends Component
-{
-  constructor(props){
+class Text2Speech extends Component {
+  constructor(props) {
     super(props);
     this.state = {
-        speech:'',
-        start:'true'
-   };
+      speech: '',
+      start: true
+    };
   }
 
-  handleChange = (event) => {
-    event.preventDefault();
-    const {name,value}=event.target;
-    this.setState({[name]:value});
-    
-  }
+  // 🎤 Start voice recognition
+  startVoice = () => {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-IN';
 
+    recognition.start();
 
-    speak = (xyz) => {
-      if(this.state.start)
-{
-      // Check if speaking
-      console.log(this.state);
-      const synth = window.speechSynthesis;
-      if (synth.speaking) {
-        console.error('Already speaking...');
-        return;
-      }
-        
-        // Get speak text
-        const speakText = new SpeechSynthesisUtterance(xyz);
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      console.log("You said:", transcript);
 
-        // Speak end
-        speakText.onend = e => {
-          console.log('Done speaking...');
+      this.setState({ speech: transcript });
 
-        };
+      // 👉 Send to backend
+      this.sendToBackend(transcript);
+    };
+  };
 
-        // Speak error
-        speakText.onerror = e => {
-          console.error('Something went wrong');
-        };
+  // 📡 Send to backend
+  sendToBackend = (text) => {
+    fetch("http://localhost:3001/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ text })
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log("Backend response:", data);
 
-        // Speak
-        synth.speak(speakText);
-      
- }   };
+      // 🔊 Speak backend response
+      this.speak(data.response || "No result found");
+    })
+    .catch(err => console.log(err));
+  };
 
+  // 🔊 Speak function
+  speak = (text) => {
+    const synth = window.speechSynthesis;
 
+    const utterance = new SpeechSynthesisUtterance(text);
 
-  handleSubmit = (event) => {
-    event.preventDefault();
-    this.speak(this.state.speech);
-    
-  }
+    utterance.onend = () => {
+      console.log('Done speaking...');
+    };
 
+    utterance.onerror = () => {
+      console.error('Something went wrong');
+    };
 
-  render()
-  {
-      return (
+    synth.speak(utterance);
+  };
 
-      <div className='wrapped Container'>
-          <textarea name="speech" id="text-input" onChange={this.handleChange} className="form-control form-control-lg" placeholder="Type anything..."></textarea>
-          <input type="submit" className="btn btn-light btn-lg btn-block" onClick={this.handleSubmit} value="Speak"/>
+  render() {
+    return (
+      <div className='wrapped container'>
+        <textarea
+          value={this.state.speech}
+          readOnly
+          className="form-control form-control-lg"
+          placeholder="Click Speak and talk..."
+        ></textarea>
+
+        {/* 🎤 Voice Button */}
+        <button
+          className="btn btn-dark btn-lg btn-block"
+          onClick={this.startVoice}
+        >
+          🎤 Speak
+        </button>
       </div>
-
-      );
-    
+    );
   }
 }
 
